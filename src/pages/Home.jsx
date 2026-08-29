@@ -262,7 +262,7 @@ export default function Home({ onAddToCart }) {
             {/* Buttons */}
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <a
-                href="#shop"
+                href="/shop"
                 className="
                   group
                   inline-flex
@@ -282,7 +282,7 @@ export default function Home({ onAddToCart }) {
                   hover:text-white
                 "
               >
-                Top 3 fragrance
+                Shop Now
                 <ArrowRight
                   size={16}
                   className="
