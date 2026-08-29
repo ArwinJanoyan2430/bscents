@@ -4,6 +4,7 @@ import SigninForm from "../components/SigninForm";
 import SignupForm from "../components/SignupForm";
 import yslImage from "../assets/home-images/ysl.png";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import toast from "react-hot-toast";
 
 export default function SigninPage() {
   const [mode, setMode] = useState("signin");
@@ -32,7 +33,7 @@ export default function SigninPage() {
 
     const formData = new FormData(event.currentTarget);
     setStatus({ error: "", loading: true, message: "" });
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: formData.get("email").trim(),
       password: formData.get("password"),
     });
@@ -42,6 +43,7 @@ export default function SigninPage() {
       return;
     }
 
+    toast.success(data.user?.app_metadata?.role === "admin" ? "Welcome, Admin" : "Signed in successfully");
     navigate("/");
   };
 
@@ -49,14 +51,17 @@ export default function SigninPage() {
     event.preventDefault();
     if (!requireSupabase()) return;
 
-    const formData = new FormData(event.currentTarget);
-    const firstName = formData.get("firstName").trim();
-    const lastName = formData.get("lastName").trim();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const firstName = String(formData.get("firstName") ?? "").trim();
+    const lastName = String(formData.get("lastName") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim().toLowerCase();
+    const password = String(formData.get("password") ?? "");
     setStatus({ error: "", loading: true, message: "" });
 
     const { data, error } = await supabase.auth.signUp({
-      email: formData.get("email").trim(),
-      password: formData.get("password"),
+      email,
+      password,
       options: {
         data: { first_name: firstName, last_name: lastName, full_name: `${firstName} ${lastName}`.trim() },
         emailRedirectTo: `${window.location.origin}/signin`,
@@ -69,22 +74,28 @@ export default function SigninPage() {
     }
 
     if (data.session) {
+      toast.success("Account created successfully");
       navigate("/");
       return;
     }
 
-    event.currentTarget.reset();
+    form.reset();
     setStatus({ error: "", loading: false, message: "Check your inbox to confirm your BSCENTS account." });
+    toast.success("Account created. Please confirm your email.");
   };
 
   const handleGoogleSignin = async () => {
     if (!requireSupabase()) return;
     setStatus({ error: "", loading: true, message: "" });
+    sessionStorage.setItem("bscents-google-login-pending", "true");
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: window.location.origin },
     });
-    if (error) setStatus({ error: error.message, loading: false, message: "" });
+    if (error) {
+      sessionStorage.removeItem("bscents-google-login-pending");
+      setStatus({ error: error.message, loading: false, message: "" });
+    }
   };
 
   return (
@@ -104,19 +115,19 @@ export default function SigninPage() {
           </div>
         </section>
 
-        <section className="flex items-center justify-center px-5 py-16 sm:px-8 lg:px-14 xl:px-20">
+        <section className={`flex items-center justify-center px-5 sm:px-8 lg:px-14 xl:px-20 ${isSignin ? "py-16" : "py-8 lg:py-10"}`}>
           <div className="w-full max-w-md">
             <p className="text-[10px] font-medium uppercase tracking-[0.35em] text-neutral-500">My BSCENTS</p>
             <h2 className="mt-4 font-serif text-5xl font-light tracking-tight sm:text-6xl">
               {isSignin ? "Welcome back." : "Join BSCENTS."}
             </h2>
-            <p className="mb-10 mt-4 text-sm font-light leading-6 text-neutral-500">
+            <p className={`${isSignin ? "mb-10" : "mb-6"} mt-4 text-sm font-light leading-6 text-neutral-500`}>
               {isSignin
                 ? "Sign in to access your account and saved fragrances."
                 : "Create an account for a more personal fragrance experience."}
             </p>
 
-            <div className="mb-9 grid grid-cols-2 border-b border-neutral-300" role="tablist" aria-label="Account form">
+            <div className={`${isSignin ? "mb-9" : "mb-6"} grid grid-cols-2 border-b border-neutral-300`} role="tablist" aria-label="Account form">
               {[
                 ["signin", "Sign in"],
                 ["signup", "Create account"],
@@ -146,7 +157,7 @@ export default function SigninPage() {
               Continue with Google
             </button>
 
-            <div className="my-7 flex items-center gap-4 text-[9px] uppercase tracking-[0.22em] text-neutral-400">
+            <div className={`${isSignin ? "my-7" : "my-5"} flex items-center gap-4 text-[9px] uppercase tracking-[0.22em] text-neutral-400`}>
               <span className="h-px flex-1 bg-neutral-300" /> or continue with email <span className="h-px flex-1 bg-neutral-300" />
             </div>
 

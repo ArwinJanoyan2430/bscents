@@ -5,7 +5,7 @@ export default function SignupForm({ error, isLoading, message, onSubmit, onSwit
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <form className="space-y-5" onSubmit={onSubmit}>
+    <form className="space-y-4" onSubmit={onSubmit}>
       <div className="grid gap-5 sm:grid-cols-2">
         <AuthInput name="firstName" label="First name" type="text" autoComplete="given-name" placeholder="First name" />
         <AuthInput name="lastName" label="Last name" type="text" autoComplete="family-name" placeholder="Last name" />

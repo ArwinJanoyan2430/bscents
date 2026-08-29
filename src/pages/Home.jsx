@@ -587,14 +587,14 @@ export default function Home({ onAddToCart }) {
             ))}
           </div>
 
-          <div className="mt-14 flex items-center justify-center lg:mt-16">
+          <div className="mt-12 flex items-center justify-center lg:mt-16">
             <a
               href="/shop"
-              className="group inline-flex items-center gap-3 border-b border-neutral-400 pb-2 text-[10px] font-medium uppercase tracking-[0.24em] text-neutral-950 transition hover:border-[#a28247] hover:text-[#a28247]"
+              className="group inline-flex min-w-56 items-center justify-between gap-6 bg-neutral-950 px-6 py-4 text-[10px] font-medium uppercase tracking-[0.22em] text-white transition hover:bg-[#9a7a42] sm:min-w-64 sm:px-7"
             >
-              Explore the full collection
+              Shop all fragrances
               <ArrowRight
-                size={15}
+                size={16}
                 className="transition-transform group-hover:translate-x-1"
               />
             </a>

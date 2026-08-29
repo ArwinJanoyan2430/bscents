@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import bsLogo from "../assets/bsLogo.png";
-import { User, ShoppingBag, Menu, X, ArrowUpRight, ChevronDown, LogOut } from "lucide-react";
+import { User, ShoppingBag, Menu, X, ArrowUpRight, ChevronDown, LayoutDashboard, LogOut } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import toast from "react-hot-toast";
 
 const navLinks = [
   { id: "home", href: "/", label: "Home" },
@@ -18,6 +19,8 @@ export default function NavBar({ cartCount = 0, onCartOpen }) {
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [user, setUser] = useState(null);
+  const accountDropdownRef = useRef(null);
+  const isAdmin = user?.app_metadata?.role === "admin";
 
   const customerName = (() => {
     if (!user) return "Account";
@@ -80,6 +83,19 @@ export default function NavBar({ cartCount = 0, onCartOpen }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!isAccountOpen) return undefined;
+
+    const closeAccountMenu = (event) => {
+      if (accountDropdownRef.current?.contains(event.target)) return;
+      if (event.target.closest('[data-account-trigger="true"]')) return;
+      setIsAccountOpen(false);
+    };
+
+    document.addEventListener("pointerdown", closeAccountMenu);
+    return () => document.removeEventListener("pointerdown", closeAccountMenu);
+  }, [isAccountOpen]);
+
   const handleAccountClick = () => {
     if (!user) {
       navigate("/signin");
@@ -89,10 +105,17 @@ export default function NavBar({ cartCount = 0, onCartOpen }) {
   };
 
   const handleLogout = async () => {
-    if (supabase) await supabase.auth.signOut();
+    if (supabase) {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error("Unable to log out. Please try again.");
+        return;
+      }
+    }
     setIsAccountOpen(false);
     setIsMenuOpen(false);
     navigate("/");
+    toast.success("Logged out successfully");
   };
 
   return (
@@ -228,7 +251,7 @@ export default function NavBar({ cartCount = 0, onCartOpen }) {
           {/* ================= DESKTOP ACTIONS ================= */}
 
           <div className="hidden items-center gap-2 xl:flex">
-            <button type="button" onClick={handleAccountClick} aria-expanded={user ? isAccountOpen : undefined} aria-haspopup={user ? "menu" : undefined} className="flex h-10 max-w-52 items-center gap-2 rounded-full px-4 text-[9px] font-medium uppercase tracking-[0.14em] text-neutral-600 outline-none transition hover:bg-neutral-100 hover:text-neutral-950 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2">
+            <button type="button" data-account-trigger="true" onClick={handleAccountClick} aria-expanded={user ? isAccountOpen : undefined} aria-haspopup={user ? "menu" : undefined} className="flex h-10 max-w-52 items-center gap-2 rounded-full px-4 text-[9px] font-medium uppercase tracking-[0.14em] text-neutral-600 outline-none transition hover:bg-neutral-100 hover:text-neutral-950 focus-visible:ring-2 focus-visible:ring-neutral-950 focus-visible:ring-offset-2">
               <User size={16} strokeWidth={1.5} /> <span className="truncate">{customerName}</span>
               {user && <ChevronDown size={13} className={`shrink-0 transition-transform ${isAccountOpen ? "rotate-180" : ""}`} />}
             </button>
@@ -241,11 +264,13 @@ export default function NavBar({ cartCount = 0, onCartOpen }) {
           {/* ================= MOBILE ACTIONS ================= */}
 
           <div className="flex items-center gap-0.5 sm:gap-1 xl:hidden">
-            <ActionButton
-              icon={User}
-              label={customerName}
-              onClick={handleAccountClick}
-            />
+            <div data-account-trigger="true">
+              <ActionButton
+                icon={User}
+                label={customerName}
+                onClick={handleAccountClick}
+              />
+            </div>
 
             <ActionButton icon={ShoppingBag} label="Cart" count={cartCount} onClick={onCartOpen} />
 
@@ -284,11 +309,24 @@ export default function NavBar({ cartCount = 0, onCartOpen }) {
           </div>
 
           {user && isAccountOpen && (
-            <div role="menu" className="absolute right-4 top-[calc(100%-2px)] z-50 w-64 border border-neutral-200 bg-white p-2 shadow-[0_20px_60px_rgba(23,23,23,0.14)] sm:right-8 lg:right-10">
+            <div ref={accountDropdownRef} role="menu" className="absolute right-4 top-[calc(100%-2px)] z-50 w-64 border border-neutral-200 bg-white p-2 shadow-[0_20px_60px_rgba(23,23,23,0.14)] sm:right-8 lg:right-10">
               <div className="border-b border-neutral-100 px-4 py-3">
                 <p className="truncate font-serif text-lg font-light text-neutral-950">{customerName}</p>
                 <p className="mt-1 truncate text-[10px] text-neutral-400">{user.email}</p>
               </div>
+              {isAdmin && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setIsAccountOpen(false);
+                    navigate("/admin");
+                  }}
+                  className="mt-1 flex w-full items-center justify-between px-4 py-3 text-[9px] font-medium uppercase tracking-[0.18em] text-neutral-600 transition hover:bg-neutral-100 hover:text-neutral-950 focus-visible:bg-neutral-100 focus-visible:outline-none"
+                >
+                  Admin dashboard <LayoutDashboard size={15} strokeWidth={1.5} />
+                </button>
+              )}
               <button type="button" role="menuitem" onClick={handleLogout} className="mt-1 flex w-full items-center justify-between px-4 py-3 text-[9px] font-medium uppercase tracking-[0.18em] text-neutral-600 transition hover:bg-neutral-950 hover:text-white focus-visible:bg-neutral-950 focus-visible:text-white focus-visible:outline-none">
                 Log out <LogOut size={15} strokeWidth={1.5} />
               </button>

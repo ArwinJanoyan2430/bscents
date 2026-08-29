@@ -1,58 +1,82 @@
-import { useState, useEffect } from 'react'
-import './index.css'
-import NavBar from './components/NavBar'
-import Cart from './components/Cart'
-import Home from './pages/Home'
-import Shop from './pages/Shop'
-import SigninPage from './pages/SigninPage'
-import AdminPage from './pages/AdminPage'
-import AdminRoute from './components/AdminRoute'
-import { PageTransitionLoader } from './components/Loader'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { useState, useEffect } from "react";
+import "./index.css";
+import NavBar from "./components/NavBar";
+import Cart from "./components/Cart";
+import Home from "./pages/Home";
+import Shop from "./pages/Shop";
+import SigninPage from "./pages/SigninPage";
+import AdminPage from "./pages/AdminPage";
+import AdminRoute from "./components/AdminRoute";
+import { PageTransitionLoader } from "./components/Loader";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
+import { supabase } from "./lib/supabase";
 
 function ScrollManager() {
-  const { pathname, hash } = useLocation()
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
-    if (hash) {
-      document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth' })
-      return
+    if (hash && hash !== "#") {
+      const targetId = decodeURIComponent(hash.slice(1));
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth" });
+        return;
+      }
     }
 
-    window.scrollTo({ top: 0 })
-  }, [pathname, hash])
+    window.scrollTo({ top: 0 });
+  }, [pathname, hash]);
 
-  return null
+  return null;
 }
 
 function App() {
-  const location = useLocation()
-  const isAdminRoute = location.pathname.startsWith('/admin')
-  const [isLoading, setIsLoading] = useState(true)
-  const [isCartOpen, setIsCartOpen] = useState(false)
-  const [cartItems, setCartItems] = useState([])
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 1200)
-    return () => clearTimeout(timer)
-  }, [])
+    const timer = setTimeout(() => setIsLoading(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const googleLoginPending = sessionStorage.getItem(
+      "bscents-google-login-pending",
+    );
+    if (!googleLoginPending || !supabase) return;
+
+    sessionStorage.removeItem("bscents-google-login-pending");
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        const isAdmin = data.session.user.app_metadata?.role === "admin";
+        toast.success(isAdmin ? "Welcome, Admin" : "Signed in successfully");
+      }
+    });
+  }, []);
 
   const addToCart = (product) => {
     setCartItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.name === product.name)
+      const existingItem = currentItems.find(
+        (item) => item.name === product.name,
+      );
 
       if (existingItem) {
         return currentItems.map((item) =>
           item.name === product.name
             ? { ...item, quantity: item.quantity + 1 }
             : item,
-        )
+        );
       }
 
-      return [...currentItems, { ...product, quantity: 1 }]
-    })
-    setIsCartOpen(true)
-  }
+      return [...currentItems, { ...product, quantity: 1 }];
+    });
+    setIsCartOpen(true);
+  };
 
   const updateCartQuantity = (name, quantity) => {
     setCartItems((currentItems) =>
@@ -61,23 +85,45 @@ function App() {
         : currentItems.map((item) =>
             item.name === name ? { ...item, quantity } : item,
           ),
-    )
-  }
+    );
+  };
 
   const removeFromCart = (name) => {
     setCartItems((currentItems) =>
       currentItems.filter((item) => item.name !== name),
-    )
-  }
+    );
+  };
 
   return (
     <>
+      <Toaster
+        position="top-center"
+        containerStyle={{
+          top: "2%",
+          bottom: "auto",
+          transform: "translateY(-50%)",
+        }}
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: "#171717",
+            color: "#fff",
+            borderRadius: "0",
+            fontSize: "12px",
+            letterSpacing: "0.04em",
+            padding: "14px 18px",
+          },
+        }}
+      />
       <PageTransitionLoader isLoading={isLoading}>
         <div className="min-h-screen">
           <ScrollManager />
           {!isAdminRoute && (
             <NavBar
-              cartCount={cartItems.reduce((total, item) => total + item.quantity, 0)}
+              cartCount={cartItems.reduce(
+                (total, item) => total + item.quantity,
+                0,
+              )}
               onCartOpen={() => setIsCartOpen(true)}
             />
           )}
@@ -109,7 +155,7 @@ function App() {
         />
       )}
     </>
-  )
+  );
 }
 
-export default App
+export default App;

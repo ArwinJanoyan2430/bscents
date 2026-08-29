@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Edit3,
   LayoutDashboard,
@@ -9,11 +9,15 @@ import {
   Search,
   ShoppingBag,
   Star,
+  Store,
   Trash2,
   User,
   Users,
   X,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "../lib/supabase";
+import toast from "react-hot-toast";
 
 const initialProducts = [
   { id: 1, name: "Sauvage Eau de Parfum", brand: "Dior", price: 8950, stock: 18 },
@@ -53,6 +57,8 @@ const formatPrice = (price) =>
   new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 }).format(price);
 
 export default function AdminPage() {
+  const navigate = useNavigate();
+  const [adminUser, setAdminUser] = useState(null);
   const [activeView, setActiveView] = useState("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [products, setProducts] = useState(initialProducts);
@@ -60,6 +66,32 @@ export default function AdminPage() {
   const [transactions, setTransactions] = useState(initialTransactions);
   const [query, setQuery] = useState("");
   const [showProductForm, setShowProductForm] = useState(false);
+
+  useEffect(() => {
+    supabase?.auth.getUser().then(({ data }) => setAdminUser(data.user ?? null));
+  }, []);
+
+  const adminName = (() => {
+    const metadata = adminUser?.user_metadata ?? {};
+    if (metadata.first_name || metadata.last_name) {
+      return [metadata.first_name, metadata.last_name].filter(Boolean).join(" ");
+    }
+    if (metadata.given_name || metadata.family_name) {
+      return [metadata.given_name, metadata.family_name].filter(Boolean).join(" ");
+    }
+    const parts = (metadata.full_name || metadata.name || "").trim().split(/\s+/).filter(Boolean);
+    return parts.length > 1 ? `${parts[0]} ${parts.at(-1)}` : parts[0] || "Administrator";
+  })();
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Unable to log out. Please try again.");
+      return;
+    }
+    navigate("/");
+    toast.success("Logged out successfully");
+  };
 
   const inventoryValue = products.reduce((total, product) => total + product.price * product.stock, 0);
   const lowStockCount = products.filter((product) => product.stock <= 5).length;
@@ -118,8 +150,8 @@ export default function AdminPage() {
           {navItems.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => { setActiveView(item.id); setIsSidebarOpen(false); }} className={`flex w-full items-center gap-3 px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.16em] transition ${activeView === item.id ? "bg-white text-neutral-950" : "text-white/50 hover:bg-white/10 hover:text-white"}`}><Icon size={17} strokeWidth={1.5} />{item.label}</button>; })}
         </nav>
         <div className="mt-auto border-t border-white/10 pt-6">
-          <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#c4a66b] text-neutral-950"><User size={17} /></span><div><p className="text-xs">Store Admin</p><p className="mt-1 text-[8px] uppercase tracking-[0.14em] text-white/35">Administrator</p></div></div>
-          <button type="button" className="flex items-center gap-3 text-[9px] uppercase tracking-[0.18em] text-white/40 transition hover:text-white"><LogOut size={15} /> Sign out</button>
+          <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#c4a66b] text-neutral-950"><User size={17} /></span><div className="min-w-0"><p className="truncate text-xs">{adminName}</p><p className="mt-1 text-[8px] uppercase tracking-[0.14em] text-white/35">Administrator</p></div></div>
+          <button type="button" onClick={handleLogout} className="flex items-center gap-3 text-[9px] uppercase tracking-[0.18em] text-white/40 transition hover:text-white"><LogOut size={15} /> Sign out</button>
         </div>
       </aside>
 
@@ -129,7 +161,17 @@ export default function AdminPage() {
         <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-neutral-200 bg-white/90 px-5 backdrop-blur-xl sm:px-8 lg:h-20 lg:px-10">
           <button type="button" onClick={() => setIsSidebarOpen(true)} className="lg:hidden" aria-label="Open admin menu"><Menu size={20} /></button>
           <div className="hidden lg:block"><p className="text-[9px] uppercase tracking-[0.25em] text-neutral-400">BSCENTS Control Room</p></div>
-          <div className="flex items-center gap-3"><div className="text-right"><p className="text-xs font-medium">Store Admin</p><p className="text-[9px] text-neutral-400">admin@bscents.ph</p></div><span className="grid h-9 w-9 place-items-center rounded-full bg-neutral-950 text-white"><User size={15} /></span></div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/")}
+              className="flex h-10 items-center gap-2 border border-neutral-200 bg-white px-3 text-[9px] font-medium uppercase tracking-[0.14em] text-neutral-600 transition hover:border-neutral-950 hover:bg-neutral-950 hover:text-white sm:px-4"
+            >
+              <Store size={15} strokeWidth={1.5} />
+              <span className="hidden sm:inline">Customer mode</span>
+            </button>
+            <div className="hidden max-w-48 text-right sm:block"><p className="truncate text-xs font-medium">{adminName}</p><p className="truncate text-[9px] text-neutral-400">{adminUser?.email ?? ""}</p></div><span className="grid h-9 w-9 place-items-center rounded-full bg-neutral-950 text-white"><User size={15} /></span>
+          </div>
         </header>
 
         <div className="p-5 sm:p-8 lg:p-10">{renderContent()}</div>
