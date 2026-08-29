@@ -141,12 +141,12 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-[#f4f2ed] text-neutral-950">
-      <aside className={`fixed inset-y-0 left-0 z-[70] flex w-72 flex-col bg-neutral-950 px-5 py-7 text-white transition-transform duration-300 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed bottom-0 left-0 top-0 z-[70] flex h-[100dvh] w-[min(85vw,18rem)] flex-col overflow-y-auto overscroll-contain bg-neutral-950 px-5 py-7 text-white shadow-[20px_0_60px_rgba(0,0,0,0.25)] transition-transform duration-300 lg:w-72 lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center justify-between border-b border-white/10 pb-7">
           <div><p className="font-serif text-2xl font-light tracking-[0.2em]">BSCENTS</p><p className="mt-1 text-[8px] uppercase tracking-[0.28em] text-white/35">Administration</p></div>
           <button type="button" onClick={() => setIsSidebarOpen(false)} className="lg:hidden" aria-label="Close admin menu"><X size={19} /></button>
         </div>
-        <nav className="mt-8 space-y-2">
+        <nav className="mt-8 shrink-0 space-y-2">
           {navItems.map((item) => { const Icon = item.icon; return <button key={item.id} type="button" onClick={() => { setActiveView(item.id); setIsSidebarOpen(false); }} className={`flex w-full items-center gap-3 px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.16em] transition ${activeView === item.id ? "bg-white text-neutral-950" : "text-white/50 hover:bg-white/10 hover:text-white"}`}><Icon size={17} strokeWidth={1.5} />{item.label}</button>; })}
         </nav>
         <div className="mt-auto border-t border-white/10 pt-6">
@@ -158,7 +158,7 @@ export default function AdminPage() {
       {isSidebarOpen && <button type="button" aria-label="Close admin menu" className="fixed inset-0 z-[60] bg-black/40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-neutral-200 bg-white/90 px-5 backdrop-blur-xl sm:px-8 lg:h-20 lg:px-10">
+        <header className="sticky top-0 z-[55] flex h-16 w-full items-center justify-between border-b border-neutral-200 bg-white/95 px-5 shadow-[0_8px_30px_rgba(23,23,23,0.04)] backdrop-blur-xl sm:px-8 lg:h-20 lg:px-10">
           <button type="button" onClick={() => setIsSidebarOpen(true)} className="lg:hidden" aria-label="Open admin menu"><Menu size={20} /></button>
           <div className="hidden lg:block"><p className="text-[9px] uppercase tracking-[0.25em] text-neutral-400">BSCENTS Control Room</p></div>
           <div className="flex items-center gap-2 sm:gap-3">

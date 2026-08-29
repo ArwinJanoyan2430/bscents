@@ -115,7 +115,7 @@ function App() {
           },
         }}
       />
-      <PageTransitionLoader isLoading={isLoading}>
+      <PageTransitionLoader isLoading={isAdminRoute ? false : isLoading}>
         <div className="min-h-screen">
           <ScrollManager />
           {!isAdminRoute && (
@@ -127,7 +127,7 @@ function App() {
               onCartOpen={() => setIsCartOpen(true)}
             />
           )}
-          <div key={location.pathname} className="page-enter">
+          <div key={location.pathname} className={isAdminRoute ? "" : "page-enter"}>
             <Routes location={location}>
               <Route path="/" element={<Home onAddToCart={addToCart} />} />
               <Route path="/shop" element={<Shop onAddToCart={addToCart} />} />
