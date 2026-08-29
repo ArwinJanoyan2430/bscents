@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -140,6 +140,8 @@ const formatPrice = (price) =>
 export default function Home({ onAddToCart }) {
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [activeReviewSlide, setActiveReviewSlide] = useState(0);
+  const reviewTouchStart = useRef(null);
+  const reviewLastInteraction = useRef(0);
 
   useEffect(() => {
     const slideTimer = window.setInterval(() => {
@@ -153,6 +155,7 @@ export default function Home({ onAddToCart }) {
 
   useEffect(() => {
     const reviewTimer = window.setInterval(() => {
+      if (Date.now() - reviewLastInteraction.current < 4500) return;
       setActiveReviewSlide((currentSlide) =>
         (currentSlide + 1) % testimonials.length,
       );
@@ -160,6 +163,25 @@ export default function Home({ onAddToCart }) {
 
     return () => window.clearInterval(reviewTimer);
   }, []);
+
+  const handleReviewTouchStart = (event) => {
+    reviewTouchStart.current = event.touches[0].clientX;
+    reviewLastInteraction.current = Date.now();
+  };
+
+  const handleReviewTouchEnd = (event) => {
+    if (reviewTouchStart.current === null) return;
+    const distance = reviewTouchStart.current - event.changedTouches[0].clientX;
+    reviewTouchStart.current = null;
+    reviewLastInteraction.current = Date.now();
+
+    if (Math.abs(distance) < 45) return;
+    setActiveReviewSlide((currentSlide) =>
+      distance > 0
+        ? (currentSlide + 1) % testimonials.length
+        : (currentSlide - 1 + testimonials.length) % testimonials.length,
+    );
+  };
 
   return (
     <main className="overflow-hidden bg-[#f7f6f2] text-neutral-950">
@@ -944,7 +966,7 @@ export default function Home({ onAddToCart }) {
           TESTIMONIALS
       ===================================================== */}
 
-      <section className="bg-white px-5 py-24 text-neutral-950 sm:px-8 lg:px-10 lg:py-20">
+      <section className="bg-white px-5 pb-10 pt-24 text-neutral-950 sm:px-8 sm:py-24 lg:px-10 lg:py-20">
         <div className="mx-auto max-w-7xl">
           <div className="mb-14 flex flex-col gap-8 border-b border-neutral-200 pb-10 md:flex-row md:items-end md:justify-between lg:mb-16">
             <div>
@@ -973,7 +995,12 @@ export default function Home({ onAddToCart }) {
           </div>
 
           {/* Auto-advancing review carousel for mobile */}
-          <div className="overflow-hidden rounded-[24px] border border-neutral-200 bg-gradient-to-b from-[#f7f4ed] to-white shadow-[0_18px_55px_rgba(23,23,23,0.08)] sm:hidden">
+          <div
+            className="touch-pan-y select-none overflow-hidden rounded-[24px] border border-neutral-200 bg-gradient-to-b from-[#f7f4ed] to-white shadow-[0_18px_55px_rgba(23,23,23,0.08)] sm:hidden"
+            onTouchStart={handleReviewTouchStart}
+            onTouchEnd={handleReviewTouchEnd}
+            onTouchCancel={() => { reviewTouchStart.current = null; }}
+          >
             <div
               className="flex transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{ transform: `translateX(-${activeReviewSlide * 100}%)` }}
@@ -1046,7 +1073,10 @@ export default function Home({ onAddToCart }) {
                 <button
                   key={`review-dot-${testimonial.author}`}
                   type="button"
-                  onClick={() => setActiveReviewSlide(index)}
+                  onClick={() => {
+                    reviewLastInteraction.current = Date.now();
+                    setActiveReviewSlide(index);
+                  }}
                   aria-label={`Show review ${index + 1}`}
                   aria-current={index === activeReviewSlide ? "true" : undefined}
                   className={`h-1 rounded-full transition-all ${
@@ -1107,7 +1137,7 @@ export default function Home({ onAddToCart }) {
 
       <section
         id="contact"
-        className="bg-white px-5 py-24 sm:px-8 lg:px-10 lg:py-10"
+        className="bg-white px-5 pb-24 pt-6 sm:px-8 sm:py-24 lg:px-10 lg:py-10"
       >
         <div className="relative mx-auto grid max-w-7xl overflow-hidden bg-[#141412] lg:grid-cols-[1.1fr_0.9fr]">
           <div className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-[#b99b62]/10 blur-3xl" />
