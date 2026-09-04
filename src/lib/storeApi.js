@@ -31,6 +31,14 @@ export async function getProducts({ includeInactive = false } = {}) {
   return data.map(mapProduct);
 }
 
+export async function getBestSellingProducts(limit = 3) {
+  const { data, error } = await requireClient().rpc("get_best_selling_products", {
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return data.map(mapProduct);
+}
+
 export async function getReviews() {
   const { data, error } = await requireClient()
     .from("reviews")
@@ -89,6 +97,14 @@ export async function getMyOrders() {
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data.map(mapOrder);
+}
+
+export async function cancelOrder(id) {
+  const { data, error } = await requireClient().rpc("cancel_order", {
+    p_order_id: id,
+  });
+  if (error) throw error;
+  return data;
 }
 
 export async function getAdminData() {

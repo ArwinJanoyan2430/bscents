@@ -17,7 +17,7 @@ import ultrmlHero from "../assets/home-images/ultrml.png";
 import mslf from "../assets/home-images/mslf.png";
 import eros from "../assets/home-images/eros.png";
 import dior from "../assets/home-images/dior.png";
-import { getProducts, getReviews } from "../lib/storeApi";
+import { getBestSellingProducts, getReviews } from "../lib/storeApi";
 
 const heroSlides = [
   { src: yslHero, alt: "YSL fragrance presentation" },
@@ -139,7 +139,7 @@ const formatPrice = (price) =>
   }).format(price);
 
 export default function Home({ onAddToCart }) {
-  const [storeProducts, setStoreProducts] = useState(featuredProducts);
+  const [storeProducts, setStoreProducts] = useState([]);
   const [storeTestimonials, setStoreTestimonials] = useState(testimonials);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [activeReviewSlide, setActiveReviewSlide] = useState(0);
@@ -147,9 +147,9 @@ export default function Home({ onAddToCart }) {
   const reviewLastInteraction = useRef(0);
 
   useEffect(() => {
-    Promise.all([getProducts(), getReviews()])
+    Promise.all([getBestSellingProducts(3), getReviews()])
       .then(([productData, reviewData]) => {
-        if (productData.length) setStoreProducts(productData.slice(0, 3).map((product) => ({ ...product, note: product.notes })));
+        setStoreProducts(productData.map((product) => ({ ...product, note: product.notes })));
         if (reviewData.length) setStoreTestimonials(reviewData.slice(0, 5).map((review) => ({ ...review, product: review.product.name, brand: review.product.brand, image: review.product.image })));
       })
       .catch(() => {});

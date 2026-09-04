@@ -10,7 +10,7 @@ import {
   Truck,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
-import { getMyOrders } from "../lib/storeApi";
+import { cancelOrder, getMyOrders } from "../lib/storeApi";
 import toast from "react-hot-toast";
 
 const statusSteps = ["Confirmed", "Preparing", "Shipped", "Delivered"];
@@ -37,6 +37,7 @@ export default function Orders() {
   const [loading, setLoading] = useState(() => Boolean(supabase));
   const [query, setQuery] = useState("");
   const [activeOrder, setActiveOrder] = useState(null);
+  const [cancellingOrder, setCancellingOrder] = useState(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -87,6 +88,22 @@ export default function Orders() {
     user?.user_metadata?.full_name?.split(" ")[0] ||
     user?.email?.split("@")[0] ||
     "there";
+
+  const handleCancel = async (order) => {
+    if (!window.confirm(`Cancel order ${order.id}? This action cannot be undone.`)) return;
+    setCancellingOrder(order.databaseId);
+    try {
+      await cancelOrder(order.databaseId);
+      setOrders((current) => current.map((item) =>
+        item.databaseId === order.databaseId ? { ...item, status: "Cancelled" } : item,
+      ));
+      toast.success(`Order ${order.id} has been cancelled.`);
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setCancellingOrder(null);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-[#f7f6f2] pt-16 text-neutral-950 lg:pt-20">
@@ -146,6 +163,8 @@ export default function Orders() {
                   order={order}
                   expanded={activeOrder === order.id}
                   onToggle={() => setActiveOrder(activeOrder === order.id ? null : order.id)}
+                  onCancel={() => handleCancel(order)}
+                  cancelling={cancellingOrder === order.databaseId}
                 />
               ))}
             </div>
@@ -212,7 +231,7 @@ function EmptyState({ hasSearch, onClear }) {
   );
 }
 
-function OrderCard({ order, expanded, onToggle }) {
+function OrderCard({ order, expanded, onToggle, onCancel, cancelling }) {
   const currentStep = Math.max(0, statusSteps.indexOf(order.status));
   const items = order.items || [];
   const total = order.total ?? items.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
@@ -250,13 +269,24 @@ function OrderCard({ order, expanded, onToggle }) {
           </div>
         </div>
 
-        <button type="button" onClick={onToggle} aria-expanded={expanded} className="mt-6 flex items-center gap-2 border-b border-neutral-300 pb-1 text-[9px] font-medium uppercase tracking-[0.18em]">
-          {expanded ? "Hide details" : "View details"} <ArrowRight className={`transition ${expanded ? "rotate-90" : ""}`} size={13} />
-        </button>
+        <div className="mt-6 flex flex-wrap items-center gap-6">
+          <button type="button" onClick={onToggle} aria-expanded={expanded} className="flex items-center gap-2 border-b border-neutral-300 pb-1 text-[9px] font-medium uppercase tracking-[0.18em]">
+            {expanded ? "Hide details" : "View details"} <ArrowRight className={`transition ${expanded ? "rotate-90" : ""}`} size={13} />
+          </button>
+          {["Confirmed", "Preparing"].includes(order.status) && (
+            <button type="button" onClick={onCancel} disabled={cancelling} className="border-b border-red-300 pb-1 text-[9px] font-medium uppercase tracking-[0.18em] text-red-600 transition hover:border-red-600 disabled:cursor-wait disabled:opacity-50">
+              {cancelling ? "Cancelling…" : "Cancel order"}
+            </button>
+          )}
+        </div>
 
         {expanded && (
           <div className="mt-7 border-t border-neutral-100 pt-7">
-            <div className="grid grid-cols-4">
+            {order.status === "Cancelled" ? (
+              <div className="border border-red-100 bg-red-50 p-5 text-sm font-light text-red-700">
+                This order was cancelled. Reserved inventory has been returned to the shop.
+              </div>
+            ) : <div className="grid grid-cols-4">
               {statusSteps.map((step, index) => {
                 const complete = index <= currentStep;
                 const Icon = index === 0 ? Check : index === 1 ? Clock3 : index === 2 ? Truck : Package;
@@ -270,7 +300,7 @@ function OrderCard({ order, expanded, onToggle }) {
                   </div>
                 );
               })}
-            </div>
+            </div>}
             {order.shippingAddress && (
               <div className="mt-8 bg-[#f8f6f1] p-5">
                 <p className="text-[9px] uppercase tracking-[0.2em] text-neutral-400">Delivering to</p>
