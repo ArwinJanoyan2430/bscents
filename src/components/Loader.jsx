@@ -102,14 +102,9 @@ export default function Loader({
   const [showLoader, setShowLoader] = useState(isLoading);
 
   useEffect(() => {
-    if (isLoading) {
-      setShowLoader(true);
-      return;
-    }
-
     const timer = setTimeout(() => {
-      setShowLoader(false);
-    }, 300);
+      setShowLoader(isLoading);
+    }, isLoading ? 0 : 300);
 
     return () => clearTimeout(timer);
   }, [isLoading]);

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -9,6 +9,8 @@ import {
   Star,
   X,
 } from "lucide-react";
+import toast from "react-hot-toast";
+import { createReview, getProducts, getReviews } from "../lib/storeApi";
 
 const products = [
   { id: 1, name: "Sauvage Eau de Parfum", brand: "Dior", type: "For Him", price: 8950, notes: "Bergamot · Amber · Vanilla", badge: "Best seller", image: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=900&q=90" },
@@ -22,8 +24,6 @@ const products = [
 ];
 
 const categories = ["All", "For Him", "For Her", "Unisex"];
-const brands = [...new Set(products.map((product) => product.brand))];
-
 const shopReviews = [
   {
     quote: "The scent was beautifully packed, authentic, and arrived sooner than expected.",
@@ -71,24 +71,43 @@ const formatPrice = (price) =>
   new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP", maximumFractionDigits: 0 }).format(price);
 
 export default function Shop({ onAddToCart }) {
+  const [catalog, setCatalog] = useState([]);
   const [category, setCategory] = useState("All");
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("featured");
   const [showFilters, setShowFilters] = useState(false);
   const [saved, setSaved] = useState([]);
-  const [reviews, setReviews] = useState(shopReviews);
+  const [reviews, setReviews] = useState([]);
   const [showAllReviews, setShowAllReviews] = useState(false);
   const [reviewDraft, setReviewDraft] = useState({
     author: "",
     quote: "",
     rating: 0,
     image: "",
+    imageFile: null,
+    productId: "",
   });
+
+  useEffect(() => {
+    Promise.all([getProducts(), getReviews()])
+      .then(([productData, reviewData]) => {
+        setCatalog(productData);
+        setReviews(reviewData);
+        setReviewDraft((current) => ({ ...current, productId: productData[0]?.id || "" }));
+      })
+      .catch((error) => {
+        setCatalog(products);
+        setReviews(shopReviews);
+        toast.error(`Store data unavailable: ${error.message}`);
+      });
+  }, []);
+
+  const brands = useMemo(() => [...new Set(catalog.map((product) => product.brand))], [catalog]);
 
   const visibleProducts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    const filtered = products.filter((product) => {
+    const filtered = catalog.filter((product) => {
       const matchesCategory = category === "All" || product.type === category;
       const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
       const matchesQuery = `${product.name} ${product.brand} ${product.notes}`.toLowerCase().includes(normalizedQuery);
@@ -101,7 +120,7 @@ export default function Shop({ onAddToCart }) {
       if (sort === "new") return Number(Boolean(b.badge)) - Number(Boolean(a.badge));
       return a.id - b.id;
     });
-  }, [category, query, selectedBrands, sort]);
+  }, [catalog, category, query, selectedBrands, sort]);
 
   const visibleReviews = showAllReviews ? reviews : reviews.slice(0, 4);
 
@@ -121,30 +140,25 @@ export default function Shop({ onAddToCart }) {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setReviewDraft((current) => ({ ...current, image: String(reader.result) }));
+      setReviewDraft((current) => ({ ...current, image: String(reader.result), imageFile: file }));
     };
     reader.readAsDataURL(file);
   };
 
-  const submitReview = (event) => {
+  const submitReview = async (event) => {
     event.preventDefault();
     if (!reviewDraft.rating || !reviewDraft.image) return;
 
-    setReviews((current) => [
-      {
-        author: reviewDraft.author.trim(),
-        quote: reviewDraft.quote.trim(),
-        rating: reviewDraft.rating,
-        product: {
-          name: "Customer fragrance",
-          brand: "Customer review",
-          image: reviewDraft.image,
-        },
-      },
-      ...current,
-    ]);
-    setReviewDraft({ author: "", quote: "", rating: 0, image: "" });
-    event.currentTarget.reset();
+    const form = event.currentTarget;
+    try {
+      await createReview({ productId: reviewDraft.productId, author: reviewDraft.author.trim(), rating: reviewDraft.rating, body: reviewDraft.quote.trim(), imageFile: reviewDraft.imageFile });
+      setReviews(await getReviews());
+      setReviewDraft({ author: "", quote: "", rating: 0, image: "", imageFile: null, productId: catalog[0]?.id || "" });
+      form.reset();
+      toast.success("Your review has been published.");
+    } catch (error) {
+      toast.error(error.message);
+    }
   };
 
   return (
@@ -201,7 +215,7 @@ export default function Shop({ onAddToCart }) {
 
           <div className="grid gap-10 lg:grid-cols-[220px_1fr] lg:gap-12">
             <aside className="hidden lg:block">
-              <FilterPanel selectedBrands={selectedBrands} toggleBrand={toggleBrand} clear={() => setSelectedBrands([])} />
+              <FilterPanel brands={brands} selectedBrands={selectedBrands} toggleBrand={toggleBrand} clear={() => setSelectedBrands([])} />
             </aside>
 
             <div>
@@ -368,6 +382,13 @@ export default function Shop({ onAddToCart }) {
                 </label>
 
                 <label className="block">
+                  <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.22em] text-neutral-500">Fragrance</span>
+                  <select required value={reviewDraft.productId} onChange={(event) => setReviewDraft((current) => ({ ...current, productId: event.target.value }))} className="w-full border-b border-neutral-300 bg-transparent py-3 text-sm outline-none focus:border-neutral-950">
+                    {catalog.map((product) => <option key={product.id} value={product.id}>{product.brand} — {product.name}</option>)}
+                  </select>
+                </label>
+
+                <label className="block">
                   <span className="mb-2 block text-[9px] font-medium uppercase tracking-[0.22em] text-neutral-500">Your review</span>
                   <textarea required rows={5} maxLength={280} value={reviewDraft.quote} onChange={(event) => setReviewDraft((current) => ({ ...current, quote: event.target.value }))} placeholder="Tell us about your fragrance..." className="w-full resize-none border border-neutral-300 bg-white p-4 text-base leading-6 outline-none transition placeholder:text-neutral-400 focus:border-neutral-950 sm:text-sm" />
                   <span className="mt-2 block text-right text-[9px] text-neutral-400">{reviewDraft.quote.length}/280</span>
@@ -397,12 +418,12 @@ export default function Shop({ onAddToCart }) {
         </div>
       </section>
 
-      {showFilters && <div className="fixed inset-0 z-[60] bg-black/35 lg:hidden" role="presentation" onClick={() => setShowFilters(false)}><div className="absolute inset-y-0 right-0 w-[min(88%,380px)] overflow-y-auto bg-[#f7f6f2] p-6" role="dialog" aria-modal="true" aria-label="Product filters" onClick={(event) => event.stopPropagation()}><div className="mb-8 flex items-center justify-between"><h2 className="font-serif text-3xl font-light">Filters</h2><button type="button" onClick={() => setShowFilters(false)} aria-label="Close filters" className="grid h-10 w-10 place-items-center rounded-full border border-neutral-300"><X size={18} /></button></div><FilterPanel selectedBrands={selectedBrands} toggleBrand={toggleBrand} clear={() => setSelectedBrands([])} /><button type="button" onClick={() => setShowFilters(false)} className="mt-10 w-full bg-neutral-950 px-5 py-4 text-[10px] font-medium uppercase tracking-[0.2em] text-white">Show {visibleProducts.length} products</button></div></div>}
+      {showFilters && <div className="fixed inset-0 z-[60] bg-black/35 lg:hidden" role="presentation" onClick={() => setShowFilters(false)}><div className="absolute inset-y-0 right-0 w-[min(88%,380px)] overflow-y-auto bg-[#f7f6f2] p-6" role="dialog" aria-modal="true" aria-label="Product filters" onClick={(event) => event.stopPropagation()}><div className="mb-8 flex items-center justify-between"><h2 className="font-serif text-3xl font-light">Filters</h2><button type="button" onClick={() => setShowFilters(false)} aria-label="Close filters" className="grid h-10 w-10 place-items-center rounded-full border border-neutral-300"><X size={18} /></button></div><FilterPanel brands={brands} selectedBrands={selectedBrands} toggleBrand={toggleBrand} clear={() => setSelectedBrands([])} /><button type="button" onClick={() => setShowFilters(false)} className="mt-10 w-full bg-neutral-950 px-5 py-4 text-[10px] font-medium uppercase tracking-[0.2em] text-white">Show {visibleProducts.length} products</button></div></div>}
     </main>
   );
 }
 
-function FilterPanel({ selectedBrands, toggleBrand, clear }) {
+function FilterPanel({ brands, selectedBrands, toggleBrand, clear }) {
   return <div><div className="flex items-center justify-between border-b border-neutral-300 pb-4"><h2 className="text-[10px] font-semibold uppercase tracking-[0.2em]">Brands</h2>{selectedBrands.length > 0 && <button type="button" onClick={clear} className="text-[9px] uppercase tracking-[0.15em] text-neutral-500 underline underline-offset-4">Clear</button>}</div><div className="space-y-4 pt-5">{brands.map((brand) => { const active = selectedBrands.includes(brand); return <label key={brand} className="flex cursor-pointer items-center justify-between text-sm font-light"><span>{brand}</span><input type="checkbox" checked={active} onChange={() => toggleBrand(brand)} className="sr-only" /><span className={`grid h-5 w-5 place-items-center border transition ${active ? "border-neutral-950 bg-neutral-950 text-white" : "border-neutral-300"}`}>{active && <Check size={12} />}</span></label>; })}</div><div className="mt-10 border-t border-neutral-300 pt-6"><p className="text-[10px] font-semibold uppercase tracking-[0.2em]">Our promise</p><p className="mt-3 text-xs font-light leading-6 text-neutral-500">Authentic fragrances, thoughtfully selected and carefully packed.</p></div></div>;
 }
 

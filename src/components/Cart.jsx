@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 
 const numericPrice = (price) => {
@@ -19,12 +19,27 @@ export default function Cart({
   onClose,
   onQuantityChange,
   onRemove,
+  onCheckout,
 }) {
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [address, setAddress] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);
   const subtotal = items.reduce(
     (total, item) => total + numericPrice(item.price) * item.quantity,
     0,
   );
+
+  const handleCheckout = async (event) => {
+    event.preventDefault();
+    setSubmitting(true);
+    const completed = await onCheckout?.(address);
+    setSubmitting(false);
+    if (completed) {
+      setAddress("");
+      setShowCheckout(false);
+    }
+  };
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -175,12 +190,25 @@ export default function Cart({
                 </div>
                 <p className="font-serif text-2xl font-light">{formatPrice(subtotal)}</p>
               </div>
-              <button
+              {showCheckout && (
+                <form onSubmit={handleCheckout} className="mt-5 border-t border-neutral-200 pt-5">
+                  <label className="block text-[9px] font-medium uppercase tracking-[0.18em] text-neutral-500">
+                    Shipping address
+                    <textarea required value={address} onChange={(event) => setAddress(event.target.value)} rows={3} placeholder="House number, street, city, province, postal code" className="mt-2 w-full resize-none border border-neutral-300 p-3 text-sm font-normal normal-case leading-5 tracking-normal outline-none focus:border-neutral-950" />
+                  </label>
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={() => setShowCheckout(false)} className="flex-1 border border-neutral-300 px-4 py-3 text-[9px] uppercase tracking-[0.16em]">Back</button>
+                    <button disabled={submitting} className="flex-[2] bg-neutral-950 px-4 py-3 text-[9px] uppercase tracking-[0.16em] text-white disabled:opacity-50">{submitting ? "Placing order…" : "Place order"}</button>
+                  </div>
+                </form>
+              )}
+              {!showCheckout && <button
                 type="button"
+                onClick={() => setShowCheckout(true)}
                 className="mt-5 flex w-full items-center justify-center bg-neutral-950 px-5 py-4 text-[10px] font-medium uppercase tracking-[0.22em] text-white transition hover:bg-neutral-800"
               >
                 Checkout
-              </button>
+              </button>}
             </footer>
           </>
         )}

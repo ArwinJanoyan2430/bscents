@@ -4,14 +4,16 @@ import NavBar from "./components/NavBar";
 import Cart from "./components/Cart";
 import Home from "./pages/Home";
 import Shop from "./pages/Shop";
+import Orders from "./pages/Orders";
 import SigninPage from "./pages/SigninPage";
 import AdminPage from "./pages/AdminPage";
 import AdminRoute from "./components/AdminRoute";
 import { PageTransitionLoader } from "./components/Loader";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import toast from "react-hot-toast";
 import { supabase } from "./lib/supabase";
+import { createOrder } from "./lib/storeApi";
 
 function ScrollManager() {
   const { pathname, hash } = useLocation();
@@ -34,6 +36,7 @@ function ScrollManager() {
 
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdminRoute = location.pathname.startsWith("/admin");
   const [isLoading, setIsLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -94,6 +97,31 @@ function App() {
     );
   };
 
+  const checkout = async (shippingAddress) => {
+    if (!supabase) {
+      toast.error("Supabase is not configured.");
+      return false;
+    }
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      setIsCartOpen(false);
+      navigate("/signin");
+      toast("Sign in before checking out.");
+      return false;
+    }
+    try {
+      const order = await createOrder(cartItems, shippingAddress);
+      setCartItems([]);
+      setIsCartOpen(false);
+      navigate("/orders");
+      toast.success(`Order ${order.order_number} placed successfully.`);
+      return true;
+    } catch (error) {
+      toast.error(error.message);
+      return false;
+    }
+  };
+
   return (
     <>
       <Toaster
@@ -131,6 +159,7 @@ function App() {
             <Routes location={location}>
               <Route path="/" element={<Home onAddToCart={addToCart} />} />
               <Route path="/shop" element={<Shop onAddToCart={addToCart} />} />
+              <Route path="/orders" element={<Orders />} />
               <Route path="/signin" element={<SigninPage />} />
               <Route
                 path="/admin"
@@ -152,6 +181,7 @@ function App() {
           onClose={() => setIsCartOpen(false)}
           onQuantityChange={updateCartQuantity}
           onRemove={removeFromCart}
+          onCheckout={checkout}
         />
       )}
     </>

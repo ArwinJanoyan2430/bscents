@@ -10,6 +10,7 @@ const navLinks = [
   { id: "shop", href: "/shop", label: "Shop" },
   { id: "about", href: "/#about", label: "About" },
   { id: "contact", href: "/#contact", label: "Contact" },
+  { id: "orders", href: "/orders", label: "Your Orders" },
 ];
 
 export default function NavBar({ cartCount = 0, onCartOpen }) {

@@ -17,6 +17,7 @@ import ultrmlHero from "../assets/home-images/ultrml.png";
 import mslf from "../assets/home-images/mslf.png";
 import eros from "../assets/home-images/eros.png";
 import dior from "../assets/home-images/dior.png";
+import { getProducts, getReviews } from "../lib/storeApi";
 
 const heroSlides = [
   { src: yslHero, alt: "YSL fragrance presentation" },
@@ -138,10 +139,21 @@ const formatPrice = (price) =>
   }).format(price);
 
 export default function Home({ onAddToCart }) {
+  const [storeProducts, setStoreProducts] = useState(featuredProducts);
+  const [storeTestimonials, setStoreTestimonials] = useState(testimonials);
   const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   const [activeReviewSlide, setActiveReviewSlide] = useState(0);
   const reviewTouchStart = useRef(null);
   const reviewLastInteraction = useRef(0);
+
+  useEffect(() => {
+    Promise.all([getProducts(), getReviews()])
+      .then(([productData, reviewData]) => {
+        if (productData.length) setStoreProducts(productData.slice(0, 3).map((product) => ({ ...product, note: product.notes })));
+        if (reviewData.length) setStoreTestimonials(reviewData.slice(0, 5).map((review) => ({ ...review, product: review.product.name, brand: review.product.brand, image: review.product.image })));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const slideTimer = window.setInterval(() => {
@@ -157,12 +169,12 @@ export default function Home({ onAddToCart }) {
     const reviewTimer = window.setInterval(() => {
       if (Date.now() - reviewLastInteraction.current < 4500) return;
       setActiveReviewSlide((currentSlide) =>
-        (currentSlide + 1) % testimonials.length,
+        (currentSlide + 1) % storeTestimonials.length,
       );
     }, 4500);
 
     return () => window.clearInterval(reviewTimer);
-  }, []);
+  }, [storeTestimonials.length]);
 
   const handleReviewTouchStart = (event) => {
     reviewTouchStart.current = event.touches[0].clientX;
@@ -178,8 +190,8 @@ export default function Home({ onAddToCart }) {
     if (Math.abs(distance) < 45) return;
     setActiveReviewSlide((currentSlide) =>
       distance > 0
-        ? (currentSlide + 1) % testimonials.length
-        : (currentSlide - 1 + testimonials.length) % testimonials.length,
+        ? (currentSlide + 1) % storeTestimonials.length
+        : (currentSlide - 1 + storeTestimonials.length) % storeTestimonials.length,
     );
   };
 
@@ -475,7 +487,7 @@ export default function Home({ onAddToCart }) {
           {/* Swipeable portrait edit for mobile */}
           <div className="-mx-5 overflow-hidden bg-white py-8 sm:hidden">
             <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-5 pb-8 pt-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {featuredProducts.map((product, index) => (
+              {storeProducts.map((product, index) => (
                 <article
                   key={`mobile-${product.name}`}
                   className="group w-[78vw] min-w-[250px] max-w-[310px] shrink-0 snap-center overflow-hidden rounded-[24px] border border-neutral-200 bg-white"
@@ -535,7 +547,7 @@ export default function Home({ onAddToCart }) {
 
           {/* Editorial layout for tablet and desktop */}
           <div className="hidden gap-5 sm:grid lg:grid-cols-2 lg:grid-rows-2">
-            {featuredProducts.map((product, index) => (
+            {storeProducts.map((product, index) => (
               <article
                 key={product.name}
                 className={`group relative overflow-hidden border border-neutral-200 bg-[#f7f5f0] ${
@@ -1005,7 +1017,7 @@ export default function Home({ onAddToCart }) {
               className="flex transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
               style={{ transform: `translateX(-${activeReviewSlide * 100}%)` }}
             >
-              {testimonials.map((testimonial, index) => (
+              {storeTestimonials.map((testimonial, index) => (
                 <blockquote
                   key={`review-slide-${testimonial.author}`}
                   className="w-full min-w-full p-3"
@@ -1069,7 +1081,7 @@ export default function Home({ onAddToCart }) {
             </div>
 
             <div className="flex items-center justify-center gap-2 pb-5 pt-1" role="group" aria-label="Review slides">
-              {testimonials.map((testimonial, index) => (
+              {storeTestimonials.map((testimonial, index) => (
                 <button
                   key={`review-dot-${testimonial.author}`}
                   type="button"
@@ -1089,7 +1101,7 @@ export default function Home({ onAddToCart }) {
 
           {/* Review grid for tablet and desktop */}
           <div className="hidden gap-x-5 gap-y-10 sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {testimonials.map((testimonial) => (
+            {storeTestimonials.map((testimonial) => (
               <blockquote
                 key={testimonial.author}
                 className="group flex flex-col overflow-hidden border border-neutral-200 bg-[#f8f6f1] transition duration-500 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-[0_20px_50px_rgba(23,23,23,0.08)]"
