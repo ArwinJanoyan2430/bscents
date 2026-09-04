@@ -97,7 +97,8 @@ export default function AdminPage() {
 
   const addProduct = async (event) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     try {
       const product = await createProduct({
       name: String(data.get("name")).trim(),
@@ -109,7 +110,7 @@ export default function AdminPage() {
         badge: String(data.get("badge") || "").trim(),
       }, data.get("image"));
       setProducts((current) => [...current, product]);
-      event.currentTarget.reset();
+      form.reset();
       setShowProductForm(false);
       toast.success("Product added.");
     } catch (error) {
@@ -119,12 +120,13 @@ export default function AdminPage() {
 
   const addReview = async (event) => {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     try {
       await createReview({ productId: String(data.get("product")), author: String(data.get("author")).trim(), rating: Number(data.get("rating")), body: String(data.get("review")).trim(), imageFile: data.get("image") });
       const refreshed = await getAdminData();
       setReviews(refreshed.reviews);
-      event.currentTarget.reset();
+      form.reset();
       toast.success("Review published.");
     } catch (error) {
       toast.error(error.message);
